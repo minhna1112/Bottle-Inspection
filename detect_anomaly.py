@@ -9,7 +9,7 @@ import time
 flags.DEFINE_string('roi', './cropped/bottom_2', 'directory for ROI images')
 flags.DEFINE_string('output', './detected/', 'directory to save DETECTED images')
 
-def create_detector(minThres, maxThres, repeat_ratio):
+def create_detector(minThres, maxThres, step, repeat_ratio):
     params = cv2.SimpleBlobDetector_Params()
 
     params.filterByInertia = False
@@ -18,8 +18,8 @@ def create_detector(minThres, maxThres, repeat_ratio):
     params.filterByColor = True
     params.blobColor = 0
     params.minThreshold = minThres
-    params.thresholdStep = maxThres
-    params.maxThreshold =   180#int(2.2*proc.max()-300)#
+    params.thresholdStep = step
+    params.maxThreshold =   maxThres#int(2.2*proc.max()-300)#
     params.minArea = 3.14159 * 0.1 * 0.1
     params.maxArea = 3.14159 * 165 * 165*0.7*0.7
     params.minRepeatability = int(repeat_ratio*(params.maxThreshold - params.minThreshold) / params.thresholdStep)
@@ -32,12 +32,12 @@ def create_detector(minThres, maxThres, repeat_ratio):
 
 def detect_single_image(roi_path, full_detector, center_detector):
     roi = cv2.imread(roi_path, 0)
-    detected = np.copy(roi)
+    copy = np.copy(roi)
     
     roi = preprocess.smoothen(roi, 'gaussian')
     
-    full_surface = remove_bottom_border(roi, 'big')
-    center_surface = remove_bottom_border(roi, 'small')
+    full_surface = utils.remove_bottom_border(roi, 'big')
+    center_surface = utils.remove_bottom_border(roi, 'small')
 
     
     full_keypoints = full_detector.detect(full_surface)
@@ -57,21 +57,18 @@ def detect_single_image(roi_path, full_detector, center_detector):
 
 def detect_multiple_images(input_dir, output_dir, full_detector, center_detector):
     file_names = [file_name for file_name in os.listdir(input_dir)]
-    
-    full_detector = create_detector(80,100,1,0.75)
-    center_detector = create_detector(170,180,1,0.25)    
-    
     for file_name in file_names:
-        detected = detect_single_image(os.path.join(input_dir, file_name))
+        detected = detect_single_image(os.path.join(input_dir, file_name), full_detector, center_detector)
         cv2.imwrite(os.path.join(output_dir, file_name), detected)
     
+def main(_argv):
+    full_detector = create_detector(80,100,1,0.75)
+    center_detector = create_detector(170,180,1, 0.25) 
+    detect_multiple_images(FLAGS.roi, FLAGS.output, full_detector, center_detector)
 
 if __name__ == '__main__':
-    dir = str(input())
-    count = 0
-
-    for file in os.listdir(dir):
-        path = os.path.join(dir, file)
-        count += anomaly_detect(path)
-
-    print(f"Number of successful detection: {str(count)}")
+    try:
+        app.run(main)
+    except SystemExit:
+        pass    
+    
