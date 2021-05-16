@@ -29,6 +29,8 @@ def smoothen(img, filter='median'):
         return cv2.medianBlur(img, 7)
     elif filter=='gaussian':
         return nd.filters.gaussian_filter(img, sigma=1.)
+    elif filter=='gaussianCV':
+        return cv2.GaussianBlur(img, (3,3), 0)
     else:
         kernel = np.array([[-1,-1, -1],
                       [-1,10, -1],
@@ -42,10 +44,13 @@ def resize_to_hd(img):
     else:
         return cv2.resize(img, (1920,1080))
         
-def binary_thresholding(roi, threshold):
-    thresholded = np.copy(roi)
-    thresholded[roi <= threshold] = 0
-    thresholded[roi > threshold] = 255
+def binary_thresholding(roi, threshold=127, mode='adaptive', filter_size=3, cons=0):
+    if mode=='adaptive':
+        thresholded = cv2.adaptiveThreshold(roi,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,filter_size,cons)
+    else:
+        thresholded = np.copy(roi)
+        thresholded[roi <= threshold] = 0
+        thresholded[roi > threshold] = 255
 
     return thresholded
 
